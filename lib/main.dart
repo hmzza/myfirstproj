@@ -33,7 +33,7 @@ typedef _Fn = void Function();
  * Pleaser look to [this](https://developer.android.com/reference/android/media/MediaRecorder.AudioSource#VOICE_UPLINK)
  *
  * I think that the problem is because it is illegal to record a communication in many countries.
- * Probably this stands also on iOS.
+ * Probably this stands h also on iOS.
  * Actually I am unable to record DOWNLINK on my Xiaomi Chinese phone.
  *
  */
