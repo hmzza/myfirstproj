@@ -10,8 +10,10 @@ import 'package:flutter_sound/flutter_sound.dart';
 import 'package:flutter_sound_platform_interface/flutter_sound_recorder_platform_interface.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:uuid/uuid.dart';
 
 void main() => runApp(MyApp());
+
 //
 class MyApp extends StatelessWidget {
   @override
@@ -33,7 +35,7 @@ typedef _Fn = void Function();
  * Pleaser look to [this](https://developer.android.com/reference/android/media/MediaRecorder.AudioSource#VOICE_UPLINK)
  *
  * I think that the problem is because it is illegal to record a communication in many countries.
- * Probably this stands also on iOS.
+ * Probably this stands h also on iOS.
  * Actually I am unable to record DOWNLINK on my Xiaomi Chinese phone.
  *
  */
@@ -41,6 +43,7 @@ typedef _Fn = void Function();
 //const theSource = AudioSource.voiceDownlink;
 
 const theSource = AudioSource.microphone;
+var uuid = const Uuid();
 
 /// Example app.
 class SimpleRecorder extends StatefulWidget {
@@ -50,23 +53,24 @@ class SimpleRecorder extends StatefulWidget {
 
 class _SimpleRecorderState extends State<SimpleRecorder> {
   Codec _codec = Codec.defaultCodec;
-  String _mPath = 'tau_file.wav';
+  String _mPath = '${uuid.v4()}.wav';
   FlutterSoundPlayer? _mPlayer = FlutterSoundPlayer();
   FlutterSoundRecorder? _mRecorder = FlutterSoundRecorder();
   bool _mPlayerIsInited = false;
   bool _mRecorderIsInited = false;
   bool _mplaybackReady = false;
+  dynamic directory = "";
 
   String completePath = "";
   String directoryPath = "";
 
-  Future<String> _completePath(String directory) async {
+  String _completePath(String directory) {
+    _mPath = '${uuid.v4()}.wav';
     var fileName = _mPath;
     return "$directory$fileName";
   }
 
-  Future<String> _directoryPath() async {
-    var directory = await getExternalStorageDirectory();
+  String _directoryPath() {
     var directoryPath = directory!.path;
     return "$directoryPath/records/";
   }
@@ -86,42 +90,41 @@ class _SimpleRecorderState extends State<SimpleRecorder> {
     });
     super.initState();
     print("Before super init");
-    _initPaths();
+    _initDirectory();
     print("After super init");
-
   }
+
   bool _isRecorderInitialised = false;
+
   Future _createFile() async {
-    File(completePath)
-        .create(recursive: true)
-        .then((File file) async {
+    File(completePath).create(recursive: true).then((File file) async {
       //write to file
       Uint8List bytes = await file.readAsBytes();
       file.writeAsBytes(bytes);
-      print("FILE CREATED AT : "+file.path);
+      print("FILE CREATED AT : " + file.path);
     });
   }
 
   void _createDirectory() async {
     bool isDirectoryCreated = await Directory(directoryPath).exists();
     if (!isDirectoryCreated) {
-      Directory(directoryPath).create()
-          .then((Directory directory) {
-        print("DIRECTORY CREATED AT : " +directory.path);
+      Directory(directoryPath).create().then((Directory directory) {
+        print("DIRECTORY CREATED AT : " + directory.path);
       });
     }
   }
 
-  Future<void> _initPaths() async {
-    final directory = await getApplicationDocumentsDirectory();
-    String _mNewPath = '${directory.path}/$_mPath'; // Update this line
-    print("File Path: $_mNewPath");
-    directoryPath = await _directoryPath();
-    completePath = await _completePath(directoryPath);
+  void _initPaths() {
+    directoryPath = _directoryPath();
+    completePath = _completePath(directoryPath);
     _createDirectory();
     _createFile();
     _isRecorderInitialised = true;
     setState(() {});
+  }
+
+  Future<void> _initDirectory() async {
+    directory = await getExternalStorageDirectory();
   }
 
   @override
@@ -143,7 +146,6 @@ class _SimpleRecorderState extends State<SimpleRecorder> {
     await _mRecorder!.openRecorder();
     if (!await _mRecorder!.isEncoderSupported(_codec) && kIsWeb) {
       _codec = Codec.defaultCodec;
-      _mPath = 'tau_file.wav';
       if (!await _mRecorder!.isEncoderSupported(_codec) && kIsWeb) {
         _mRecorderIsInited = true;
         return;
@@ -153,11 +155,11 @@ class _SimpleRecorderState extends State<SimpleRecorder> {
     await session.configure(AudioSessionConfiguration(
       avAudioSessionCategory: AVAudioSessionCategory.playAndRecord,
       avAudioSessionCategoryOptions:
-      AVAudioSessionCategoryOptions.allowBluetooth |
-      AVAudioSessionCategoryOptions.defaultToSpeaker,
+          AVAudioSessionCategoryOptions.allowBluetooth |
+              AVAudioSessionCategoryOptions.defaultToSpeaker,
       avAudioSessionMode: AVAudioSessionMode.spokenAudio,
       avAudioSessionRouteSharingPolicy:
-      AVAudioSessionRouteSharingPolicy.defaultPolicy,
+          AVAudioSessionRouteSharingPolicy.defaultPolicy,
       avAudioSessionSetActiveOptions: AVAudioSessionSetActiveOptions.none,
       androidAudioAttributes: const AndroidAudioAttributes(
         contentType: AndroidAudioContentType.speech,
@@ -174,6 +176,9 @@ class _SimpleRecorderState extends State<SimpleRecorder> {
   // ----------------------  Here is the code for recording and playback -------
 
   void record() {
+    print("Before record path: $completePath");
+    _initPaths();
+    print("After record path: $completePath");
     _mRecorder!
         .startRecorder(
       toFile: completePath,
@@ -197,17 +202,18 @@ class _SimpleRecorderState extends State<SimpleRecorder> {
   }
 
   void play() {
+    print("PLayer path: $completePath");
     assert(_mPlayerIsInited &&
         _mplaybackReady &&
         _mRecorder!.isStopped &&
         _mPlayer!.isStopped);
     _mPlayer!
         .startPlayer(
-        fromURI: completePath,
-        //codec: kIsWeb ? Codec.opusWebM : Codec.aacADTS,
-        whenFinished: () {
-          setState(() {});
-        })
+            fromURI: completePath,
+            codec: Codec.defaultCodec,
+            whenFinished: () {
+              setState(() {});
+            })
         .then((value) {
       setState(() {});
     });
@@ -281,8 +287,6 @@ class _SimpleRecorderState extends State<SimpleRecorder> {
                 color: Colors.indigo,
                 width: 3,
               ),
-
-
             ),
             child: Row(children: [
               ElevatedButton(
