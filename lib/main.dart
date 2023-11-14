@@ -11,6 +11,7 @@ import 'package:flutter_sound_platform_interface/flutter_sound_recorder_platform
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
+import 'package:tflite_flutter/tflite_flutter.dart';
 
 void main() => runApp(MyApp());
 
